@@ -78,11 +78,12 @@ jobs:
       - name: Package unsigned IPA
         run: |
           set -euo pipefail
-          APP_PATH="$(find "$DERIVED_DATA/Build/Products" -type d -path '*Release-iphoneos/Kumone.app' -print -quit)"
+          APP_PATH="$(find "$DERIVED_DATA/Build/Products" -type d -path '*Release-iphoneos/*.app' -print -quit)"
           test -n "$APP_PATH"
+          APP_NAME="$(basename "$APP_PATH")"
           rm -rf artifact Payload
           mkdir -p artifact/Payload
-          ditto "$APP_PATH" artifact/Payload/Kumone.app
+          ditto "$APP_PATH" "artifact/Payload/$APP_NAME"
           ditto -c -k --sequesterRsrc --keepParent artifact/Payload "artifact/Kumone-iOS15-unsigned.ipa"
           cat > artifact/BUILD-METADATA.txt <<EOF
           Application: Kumone
