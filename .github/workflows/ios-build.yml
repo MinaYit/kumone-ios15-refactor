@@ -1,0 +1,106 @@
+name: iOS 15 Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 每次构建在操作页面显式标明触发者，便于仓库所有者展示和追溯本人编译记录。
+run-name: "由 @${{ github.actor }} 发起 · iOS 15 构建 #${{ github.run_number }}"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: iOS 15 · Build, Test & IPA
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    env:
+      PROJECT: ios/KumoneIOS.xcodeproj
+      SCHEME: KumoneIOS
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+      BUILD_NUMBER: ${{ github.run_number }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Select current Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          xcrun simctl list devices available
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
+      - name: Build for iOS 15 baseline
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$DERIVED_DATA" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build | tee build-device.log
+          test ${PIPESTATUS[0]} -eq 0
+
+      - name: Run iOS simulator UI tests
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            test | tee test-simulator.log
+          test ${PIPESTATUS[0]} -eq 0
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "$DERIVED_DATA/Build/Products" -type d -path '*Release-iphoneos/Kumone.app' -print -quit)"
+          test -n "$APP_PATH"
+          rm -rf artifact Payload
+          mkdir -p artifact/Payload
+          ditto "$APP_PATH" artifact/Payload/Kumone.app
+          ditto -c -k --sequesterRsrc --keepParent artifact/Payload "artifact/Kumone-iOS15-unsigned.ipa"
+          cat > artifact/BUILD-METADATA.txt <<EOF
+          Application: Kumone
+          Marketing version: 0.3.12
+          Build number: ${BUILD_NUMBER}
+          Minimum iOS: 15.0
+          Triggered by: ${{ github.actor }}
+          Commit: ${{ github.sha }}
+          Signing: unsigned (for TrollStore or sideload signing)
+          EOF
+          ls -lh artifact
+
+      - name: Upload IPA and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kumone-iOS15-${{ github.run_number }}-${{ github.actor }}
+          path: |
+            artifact/**
+            build-device.log
+            test-simulator.log
+            ${{ env.DERIVED_DATA }}/Logs/Test/*.xcresult
+          if-no-files-found: warn
+          retention-days: 14
