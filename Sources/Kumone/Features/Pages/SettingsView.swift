@@ -338,6 +338,8 @@ private struct IOSSettingsDisclosureRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(IOSSettingsRowButtonStyle())
+        .accessibilityLabel(title)
+        .accessibilityValue(detail)
     }
 }
 

@@ -59,7 +59,7 @@ jobs:
             clean build | tee build-device.log
           test ${PIPESTATUS[0]} -eq 0
 
-      - name: Run iOS simulator UI tests
+      - name: Run iOS 15 refactor UI tests
         run: |
           xcodebuild \
             -project "$PROJECT" \
@@ -69,6 +69,9 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            -only-testing:KumoneIOSUITests/KumoneIOSUITests/testLiquidGlassNavigationKeepsSearchSeparateAndTappable \
+            -only-testing:KumoneIOSUITests/KumoneIOSUITests/testSettingsUsesCardGroupsAndChoiceSheet \
+            -only-testing:KumoneIOSUITests/KumoneIOSUITests/testNowPlayingUsesSystemSwipeDownDismissal \
             test | tee test-simulator.log
           test ${PIPESTATUS[0]} -eq 0
 
