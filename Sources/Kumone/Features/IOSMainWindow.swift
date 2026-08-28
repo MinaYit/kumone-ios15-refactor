@@ -118,13 +118,20 @@ public struct IOSMainWindow: View {
 
     @ViewBuilder
     private var tabInterface: some View {
+        // Xcode 16.4 的 iOS 18 SDK 不认识 iOS 26 的新标签栏符号，运行时
+        // availability 判断不足以让旧 SDK 编译，因此同时使用编译期保护。
+        #if swift(>=6.2)
         if #available(iOS 26.0, *) {
             iOS26TabInterface
         } else {
             customTabInterface
         }
+        #else
+        customTabInterface
+        #endif
     }
 
+    #if swift(>=6.2)
     /// Attach the bottom mini-player accessory only when something is playing.
     /// Leaving the modifier on with empty content still renders an empty,
     /// translucent accessory platter above the tab bar when idle (#35), so we
@@ -174,6 +181,7 @@ public struct IOSMainWindow: View {
             }
         }
     }
+    #endif
 
     private var customTabInterface: some View {
         ZStack(alignment: .bottom) {
@@ -278,6 +286,7 @@ private enum KeyboardDismissal {
 
 // MARK: - Mini player bar for iOS
 
+#if swift(>=6.2)
 @available(iOS 26.0, *)
 private struct IOSMiniPlayerAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
@@ -296,6 +305,7 @@ private struct IOSMiniPlayerAccessory: View {
         ) ? .inlineAccessory : .bottomAccessory
     }
 }
+#endif
 
 private extension View {
     @ViewBuilder

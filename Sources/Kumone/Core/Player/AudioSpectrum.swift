@@ -242,11 +242,14 @@ private final class SpectrumStore: @unchecked Sendable {
             }
         )
 
-        var tap: MTAudioProcessingTap?
+        // Xcode 16.4 imports the create-out parameter with explicit Core
+        // Foundation ownership. Convert the returned retained object exactly
+        // once before exposing it to the player.
+        var retainedTap: Unmanaged<MTAudioProcessingTap>?
         let err = MTAudioProcessingTapCreate(
             kCFAllocatorDefault, &callbacks,
-            kMTAudioProcessingTapCreationFlag_PostEffects, &tap)
-        guard err == noErr, let tap else {
+            kMTAudioProcessingTapCreationFlag_PostEffects, &retainedTap)
+        guard err == noErr, let tap = retainedTap?.takeRetainedValue() else {
             // `finalize:` will never run, so hand the retain back by hand.
             retained.release()
             return nil

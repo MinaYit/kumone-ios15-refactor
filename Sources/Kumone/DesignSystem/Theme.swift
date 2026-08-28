@@ -94,9 +94,10 @@ extension View {
         #endif
     }
 
-    /// Glass background with a graceful material fallback on macOS 15.
+    /// 新版玻璃效果只在编译器与运行时均支持时启用；iOS 15 至 iOS 18 统一回退到系统材质。
     @ViewBuilder
     func compatGlass(interactive: Bool = false, in shape: some Shape) -> some View {
+        #if swift(>=6.2)
         #if os(macOS)
         if #available(macOS 26.0, *) {
             self.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
@@ -109,6 +110,9 @@ extension View {
         } else {
             self.background(.ultraThinMaterial, in: shape)
         }
+        #else
+        self.background(.ultraThinMaterial, in: shape)
+        #endif
         #else
         self.background(.ultraThinMaterial, in: shape)
         #endif

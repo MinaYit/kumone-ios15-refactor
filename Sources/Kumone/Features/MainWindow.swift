@@ -31,6 +31,7 @@ struct MainWindow: View {
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar {
+            #if swift(>=6.2)
             if #available(macOS 26.0, iOS 26.0, *) {
                 ToolbarItem(placement: .primaryAction) {
                     SearchFieldView { query in
@@ -45,6 +46,13 @@ struct MainWindow: View {
                     }
                 }
             }
+            #else
+            ToolbarItem(placement: .primaryAction) {
+                SearchFieldView { query in
+                    path.append(Destination.search(query))
+                }
+            }
+            #endif
         }
         #if os(macOS)
         // Immersive now-playing page: hide the whole window toolbar
